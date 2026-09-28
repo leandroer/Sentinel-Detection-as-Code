@@ -1,0 +1,41 @@
+# Deployment and promotion
+
+## Prerequisites
+
+- Azure subscription and isolated resource group
+- Azure CLI with Bicep support
+- Permission to create Log Analytics, Sentinel, and Logic App resources
+- Python 3.11 and the development requirements
+
+## Infrastructure
+
+```bash
+az deployment group create \
+  --resource-group <resource-group> \
+  --template-file infra/main.bicep \
+  --parameters infra/parameters/dev.bicepparam
+```
+
+## Analytics rules
+
+```bash
+./scripts/deploy.sh dev <resource-group> <workspace-name>
+```
+
+The package command emits a complete ARM template and manifest under `dist/<environment>/`.
+
+## GitHub configuration
+
+Create `dev`, `test`, and `prod` environments. Require reviewers for production and configure these repository variables:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+- `AZURE_RESOURCE_GROUP`
+- `SENTINEL_WORKSPACE_NAME`
+
+Use Azure workload identity federation rather than a client secret.
+
+## Rollback
+
+Redeploy the package attached to the previous GitHub release. Rule IDs remain stable, so ARM updates the existing resources. If an urgent rule disable is required, change `enabled` in source, validate, and promote that commit rather than creating permanent portal drift.

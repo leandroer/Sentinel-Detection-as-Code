@@ -1,0 +1,14 @@
+id: key-vault-access-anomaly
+title: Key Vault secret access volume anomaly
+rule: analytics-rules/cloud/key-vault-access-anomaly.yaml
+table: AzureDiagnostics
+generator: key_vault_access_anomaly
+description: Generates 22 successful secret reads by one principal within a short interval.
+expected:
+  alertCount: 1
+  entities:
+    Account: 11111111-1111-4111-8111-111111111111
+  requiredColumns: [CallerObjectId, CallerIPAddress, VaultName, SecretCount]
+benignControl:
+  description: Five secret reads remain below the volume threshold.
+  expectedAlertCount: 0

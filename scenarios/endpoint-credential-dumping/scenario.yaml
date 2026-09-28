@@ -1,0 +1,14 @@
+id: endpoint-credential-dumping
+title: Endpoint credential dumping indicators
+rule: analytics-rules/endpoint/credential-dumping.yaml
+table: DeviceProcessEvents
+generator: endpoint_credential_dumping
+description: Generates a simulated process event in which ProcDump targets LSASS.
+expected:
+  alertCount: 1
+  entities:
+    Host: lab-endpoint-01
+  requiredColumns: [DeviceName, AccountUpn, ProcessCommandLine, DetectionReason]
+benignControl:
+  description: ProcDump targets an ordinary lab process rather than LSASS.
+  expectedAlertCount: 0

@@ -1,0 +1,51 @@
+id: e227f213-a831-4a59-a755-304910a547fd
+name: MFA fatigue followed by successful sign-in
+description: Detects repeated denied MFA challenges followed by a successful authentication for the same identity.
+status: Available
+severity: High
+kind: Scheduled
+enabled: true
+queryFrequency: PT5M
+queryPeriod: PT30M
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [CredentialAccess, InitialAccess]
+techniques: [T1621, T1078]
+dataSources: [SigninLogs]
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserPrincipalName
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: SuccessfulIPAddress
+customDetails:
+  DeniedChallenges: DeniedChallenges
+query: |
+  let denied = SigninLogs
+  | where TimeGenerated > ago(30m)
+  | where ResultDescription has_any ("MFA denied", "user declined", "fraud")
+  | summarize DeniedChallenges=count(), FirstDenied=min(TimeGenerated), LastDenied=max(TimeGenerated) by UserPrincipalName
+  | where DeniedChallenges >= 5;
+  SigninLogs
+  | where TimeGenerated > ago(15m) and ResultType == 0
+  | project UserPrincipalName, SuccessTime=TimeGenerated, SuccessfulIPAddress=IPAddress, AppDisplayName
+  | join kind=inner denied on UserPrincipalName
+  | where SuccessTime between (FirstDenied .. LastDenied + 15m)
+  | project SuccessTime, UserPrincipalName, SuccessfulIPAddress, AppDisplayName, DeniedChallenges, FirstDenied, LastDenied
+suppressionDuration: PT1H
+suppressionEnabled: false
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: true
+    reopenClosedIncident: false
+    lookbackDuration: PT1H
+    matchingMethod: Selected
+    groupByEntities: [Account]
+tuning:
+  - Confirm the tenant's localized MFA failure descriptions before deployment.
+  - Exclude controlled MFA testing accounts only after documenting the exception.
+scenario: mfa-fatigue-success

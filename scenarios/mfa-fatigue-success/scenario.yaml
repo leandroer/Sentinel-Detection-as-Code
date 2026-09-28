@@ -1,0 +1,14 @@
+id: mfa-fatigue-success
+title: MFA fatigue followed by successful sign-in
+rule: analytics-rules/identity/mfa-fatigue-success.yaml
+table: SigninLogs
+generator: mfa_fatigue_success
+description: Generates five denied MFA prompts followed by a successful authentication.
+expected:
+  alertCount: 1
+  entities:
+    Account: fatigued.user@example.invalid
+  requiredColumns: [UserPrincipalName, SuccessfulIPAddress, DeniedChallenges]
+benignControl:
+  description: Two declined MFA prompts without success remain below the threshold.
+  expectedAlertCount: 0

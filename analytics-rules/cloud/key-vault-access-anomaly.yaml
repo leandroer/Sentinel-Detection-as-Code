@@ -1,0 +1,50 @@
+id: c311153e-cb1e-48f4-af23-f3f84bef4c3f
+name: Key Vault secret access volume anomaly
+description: Detects a principal reading an unusual number of secrets across an Azure Key Vault.
+status: Available
+severity: High
+kind: Scheduled
+enabled: true
+queryFrequency: PT10M
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [CredentialAccess, Collection]
+techniques: [T1555, T1530]
+dataSources: [AzureDiagnostics]
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: AadUserId
+        columnName: CallerObjectId
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: CallerIPAddress
+customDetails:
+  VaultName: VaultName
+  SecretCount: SecretCount
+query: |
+  AzureDiagnostics
+  | where TimeGenerated > ago(1h)
+  | where ResourceProvider == "MICROSOFT.KEYVAULT"
+  | where OperationName has_any ("SecretGet", "SecretList")
+  | where ResultType =~ "Success"
+  | extend CallerObjectId=tostring(identity_claim_oid_g), CallerIPAddress=tostring(callerIpAddress_s), VaultName=tostring(Resource)
+  | summarize SecretCount=count(), DistinctOperations=dcount(OperationName), FirstSeen=min(TimeGenerated), LastSeen=max(TimeGenerated) by CallerObjectId, CallerIPAddress, VaultName
+  | where SecretCount >= 20
+  | project LastSeen, CallerObjectId, CallerIPAddress, VaultName, SecretCount, DistinctOperations, FirstSeen
+suppressionDuration: PT2H
+suppressionEnabled: false
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: true
+    reopenClosedIncident: false
+    lookbackDuration: PT2H
+    matchingMethod: Selected
+    groupByEntities: [Account]
+tuning:
+  - Establish separate thresholds for deployment identities and interactive users.
+  - Allowlist documented backup or rotation services by immutable object ID.
+scenario: key-vault-access-anomaly

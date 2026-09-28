@@ -1,0 +1,14 @@
+id: ai-agent-data-exfiltration
+title: AI agent sensitive data sent to external destination
+rule: analytics-rules/ai-security/agent-data-exfiltration.yaml
+table: AIApp_CL
+generator: ai_agent_data_exfiltration
+description: Generates a simulated agent response containing restricted data sent to an external address.
+expected:
+  alertCount: 1
+  entities:
+    Account: analyst@example.invalid
+  requiredColumns: [UserPrincipalName, ApplicationName, AgentId, Destination, SensitivityClassification]
+benignControl:
+  description: Public data sent to an approved internal address does not alert.
+  expectedAlertCount: 0

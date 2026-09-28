@@ -1,0 +1,27 @@
+name: Detection request
+description: Propose a new behavior and its test scenario.
+title: "[Detection]: "
+labels: [enhancement, detection]
+body:
+  - type: textarea
+    attributes:
+      label: Behavior
+      description: Describe the observable malicious behavior, not only an indicator.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Data sources
+      description: List required Sentinel tables and fields.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: MITRE ATT&CK
+      description: Relevant tactic and technique identifiers.
+  - type: textarea
+    attributes:
+      label: Benign control
+      description: Describe similar legitimate activity that should not alert.
+    validations:
+      required: true

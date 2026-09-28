@@ -1,0 +1,14 @@
+id: password-spray-success
+title: Password spray followed by successful sign-in
+rule: analytics-rules/identity/password-spray-followed-by-success.yaml
+table: SigninLogs
+generator: password_spray_success
+description: Generates failures from multiple source addresses against one identity followed by a successful sign-in.
+expected:
+  alertCount: 1
+  entities:
+    Account: target.user@example.invalid
+  requiredColumns: [UserPrincipalName, SuccessfulIPAddress, FailureCount, FailedIPAddressCount]
+benignControl:
+  description: Four failed sign-ins with no success remain below the threshold.
+  expectedAlertCount: 0

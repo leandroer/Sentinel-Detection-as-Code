@@ -1,0 +1,35 @@
+name: Validate detection content
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: python scripts/validate.py
+      - run: python -m unittest discover -s tests -v
+      - run: python scripts/generate_telemetry.py --all --output build/telemetry
+      - run: python scripts/package_rules.py --environment dev --output dist/dev
+      - name: Validate generated JSON
+        run: |
+          python -m json.tool dist/dev/sentinel-analytics-rules.json >/dev/null
+          python -m json.tool dist/dev/manifest.json >/dev/null
+      - name: Build Bicep
+        run: az bicep build --file infra/main.bicep
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dev-sentinel-package
+          path: dist/dev/
+          if-no-files-found: error

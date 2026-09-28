@@ -1,0 +1,51 @@
+id: 8d46c731-305d-4c0a-b9b4-38ed366c68c3
+name: AI agent sensitive data sent to external destination
+description: Detects an AI application returning sensitive content to a destination outside approved organizational domains.
+status: Available
+severity: High
+kind: Scheduled
+enabled: true
+queryFrequency: PT5M
+queryPeriod: PT15M
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [Exfiltration]
+techniques: [T1048, T1567]
+dataSources: [AIApp_CL]
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserPrincipalName
+  - entityType: CloudApplication
+    fieldMappings:
+      - identifier: Name
+        columnName: ApplicationName
+customDetails:
+  AgentId: AgentId
+  Destination: Destination
+  Classification: SensitivityClassification
+query: |
+  let approvedDomains = dynamic(["contoso.com", "example.invalid"]);
+  AIApp_CL
+  | where TimeGenerated > ago(15m)
+  | extend UserPrincipalName=tostring(UserPrincipalName_s), ApplicationName=tostring(ApplicationName_s), AgentId=tostring(AgentId_s), Destination=tostring(Destination_s), SensitivityClassification=tostring(SensitivityClassification_s), OutputBytes=tolong(OutputBytes_d)
+  | extend DestinationDomain=tolower(extract(@"@([^>]+)$", 1, Destination))
+  | where SensitivityClassification in~ ("Confidential", "Highly Confidential", "Restricted")
+  | where OutputBytes > 0
+  | where isempty(DestinationDomain) or DestinationDomain !in (approvedDomains)
+  | project TimeGenerated, UserPrincipalName, ApplicationName, AgentId, Destination, DestinationDomain, SensitivityClassification, OutputBytes, CorrelationId=tostring(CorrelationId_g)
+suppressionDuration: PT1H
+suppressionEnabled: false
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: true
+    reopenClosedIncident: false
+    lookbackDuration: PT1H
+    matchingMethod: Selected
+    groupByEntities: [Account, CloudApplication]
+tuning:
+  - Replace the sample domain allowlist with a governed Sentinel watchlist in production.
+  - Align sensitivity labels with the organization's Microsoft Purview taxonomy.
+scenario: ai-agent-data-exfiltration
