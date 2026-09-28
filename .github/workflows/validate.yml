@@ -28,7 +28,7 @@ jobs:
           python -m json.tool dist/dev/manifest.json >/dev/null
       - name: Build Bicep
         run: az bicep build --file infra/main.bicep
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dev-sentinel-package
           path: dist/dev/
