@@ -68,12 +68,16 @@ python scripts/package_rules.py --environment dev --output dist/dev
 Deploy the lab infrastructure and packaged analytics rules:
 
 ```bash
-az deployment group create \
-  --resource-group <resource-group> \
-  --template-file infra/main.bicep \
-  --parameters environment=dev location=eastus
+export AZURE_RESOURCE_GROUP="<your-resource-group-name>"
+export AZURE_LOCATION="<your-azure-region>"
+export SENTINEL_WORKSPACE_NAME="<your-log-analytics-workspace-name>"
 
-./scripts/deploy.sh dev <resource-group> <workspace-name>
+az deployment group create \
+  --resource-group "$AZURE_RESOURCE_GROUP" \
+  --template-file infra/main.bicep \
+  --parameters environment=dev location="$AZURE_LOCATION" workspaceName="$SENTINEL_WORKSPACE_NAME"
+
+./scripts/deploy.sh dev "$AZURE_RESOURCE_GROUP" "$SENTINEL_WORKSPACE_NAME"
 ```
 
 Deployment is intentionally separate from pull-request validation. CI can validate and package content without Azure credentials; deployment uses GitHub environments and Azure workload identity federation.
