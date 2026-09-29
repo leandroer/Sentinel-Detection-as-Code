@@ -12,16 +12,19 @@ For a first-time Azure or GitHub Actions setup, follow the complete [Azure and G
 ## Infrastructure
 
 ```bash
+export AZURE_RESOURCE_GROUP="<your-resource-group-name>"
+export SENTINEL_WORKSPACE_NAME="<your-log-analytics-workspace-name>"
+
 az deployment group create \
-  --resource-group <resource-group> \
+  --resource-group "$AZURE_RESOURCE_GROUP" \
   --template-file infra/main.bicep \
-  --parameters infra/parameters/dev.bicepparam
+  --parameters infra/parameters/dev.bicepparam workspaceName="$SENTINEL_WORKSPACE_NAME"
 ```
 
 ## Analytics rules
 
 ```bash
-./scripts/deploy.sh dev <resource-group> <workspace-name>
+./scripts/deploy.sh dev "$AZURE_RESOURCE_GROUP" "$SENTINEL_WORKSPACE_NAME"
 ```
 
 The package command emits a complete ARM template and manifest under `dist/<environment>/`.
@@ -36,7 +39,7 @@ Create `dev`, `test`, and `prod` environments. Require reviewers for production 
 - `AZURE_RESOURCE_GROUP`
 - `SENTINEL_WORKSPACE_NAME`
 
-Use Azure workload identity federation rather than a client secret.
+Supply values from the target Azure environment; none of these identifiers are committed to the repository. Use Azure workload identity federation rather than a client secret.
 
 The deployment workflow first deploys `infra/main.bicep`, then deploys the packaged analytics rules. Run **Verify deployed Sentinel content** after the first deployment and use the scheduled drift workflow to identify portal-side changes.
 
