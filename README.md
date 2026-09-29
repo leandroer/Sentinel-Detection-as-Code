@@ -88,7 +88,7 @@ Deployment is intentionally separate from pull-request validation. CI can valida
 6. Promote the same package through `dev`, `test`, and `prod` environments.
 7. Tune thresholds through environment parameter files—not direct portal edits.
 
-See [the authoring guide](docs/rule-authoring.md), [deployment guide](docs/deployment.md), and [testing model](docs/testing.md).
+See [the authoring guide](docs/rule-authoring.md), [deployment guide](docs/deployment.md), [Azure and GitHub OIDC bootstrap guide](docs/azure-oidc-bootstrap.md), and [testing model](docs/testing.md).
 
 ## Safety
 

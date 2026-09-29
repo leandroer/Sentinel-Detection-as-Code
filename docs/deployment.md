@@ -7,6 +7,8 @@
 - Permission to create Log Analytics, Sentinel, and Logic App resources
 - Python 3.11 and the development requirements
 
+For a first-time Azure or GitHub Actions setup, follow the complete [Azure and GitHub OIDC bootstrap guide](azure-oidc-bootstrap.md). It covers the Entra application, federated trust, least-privilege resource-group role assignment, GitHub environment variables, first deployment, troubleshooting, and teardown.
+
 ## Infrastructure
 
 ```bash
