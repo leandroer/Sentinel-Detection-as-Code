@@ -10,7 +10,7 @@ Track alerts per day, incident conversion rate, true-positive rate, mean time to
 
 ## Drift
 
-Treat portal edits as emergency changes. Reconcile them into Git immediately. A scheduled pipeline can compare the deployed rule properties with the release manifest and report drift without automatically overwriting an active investigation change.
+Treat portal edits as emergency changes. Reconcile them into Git immediately. The scheduled **Detect Sentinel configuration drift** workflow compares deployed rule properties with source control and reports drift without automatically overwriting an active investigation change.
 
 ## Thresholds
 

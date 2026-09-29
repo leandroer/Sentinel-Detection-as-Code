@@ -22,3 +22,9 @@ For a real test workspace:
 6. Remove test data or let the test workspace retention policy expire it.
 
 The repository intentionally does not embed tenant credentials or automatically ingest data from an untrusted pull request.
+
+### Native-table constraint
+
+`SigninLogs`, `AzureDiagnostics`, and `DeviceProcessEvents` are connector-owned tables. The Azure Logs Ingestion API cannot insert arbitrary fixtures into them, so a workflow must not claim to create end-to-end alerts from JSONL alone. Validate those rules in an isolated test tenant by generating controlled, authorized activity through the relevant identity, Azure, and endpoint test paths. For custom tables such as `AIApp_CL`, use a dedicated DCR/DCE test pipeline and validate alerts after ingestion.
+
+The repository's **Verify deployed Sentinel content** workflow verifies that the source-controlled rule properties are deployed correctly. It is a deployment integration check, not a substitute for connector-specific behavior validation.

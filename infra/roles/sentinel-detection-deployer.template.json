@@ -1,0 +1,27 @@
+{
+  "Name": "Sentinel Detection as Code Deployer",
+  "IsCustom": true,
+  "Description": "Deploys the Sentinel Detection as Code lab and its custom analytics rules within one resource group.",
+  "Actions": [
+    "Microsoft.Resources/subscriptions/resourceGroups/read",
+    "Microsoft.Resources/deployments/*",
+    "Microsoft.OperationalInsights/workspaces/read",
+    "Microsoft.OperationalInsights/workspaces/write",
+    "Microsoft.OperationalInsights/workspaces/delete",
+    "Microsoft.OperationalInsights/workspaces/providers/alertRules/read",
+    "Microsoft.OperationalInsights/workspaces/providers/alertRules/write",
+    "Microsoft.OperationalInsights/workspaces/providers/alertRules/delete",
+    "Microsoft.OperationsManagement/solutions/read",
+    "Microsoft.OperationsManagement/solutions/write",
+    "Microsoft.OperationsManagement/solutions/delete",
+    "Microsoft.Logic/workflows/read",
+    "Microsoft.Logic/workflows/write",
+    "Microsoft.Logic/workflows/delete"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/<SUBSCRIPTION_ID>"
+  ]
+}

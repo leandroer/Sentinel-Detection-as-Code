@@ -13,7 +13,7 @@ The repository turns five security scenarios into reproducible engineering artif
 - Environment-aware ARM packaging
 - Development, test, and production promotion
 - Sentinel incident automation with Logic Apps
-- Versioned release artifacts and rollback-friendly deployments
+- Versioned release artifacts, deployment verification, and rollback-friendly deployments
 
 ## Architecture
 
@@ -89,6 +89,8 @@ Deployment is intentionally separate from pull-request validation. CI can valida
 7. Tune thresholds through environment parameter files—not direct portal edits.
 
 See [the authoring guide](docs/rule-authoring.md), [deployment guide](docs/deployment.md), [Azure and GitHub OIDC bootstrap guide](docs/azure-oidc-bootstrap.md), and [testing model](docs/testing.md).
+
+After an Azure deployment, run the **Verify deployed Sentinel content** workflow to compare deployed rule properties with the canonical YAML. The weekly drift workflow performs the same read-only comparison for the configured `dev` environment.
 
 ## Safety
 
