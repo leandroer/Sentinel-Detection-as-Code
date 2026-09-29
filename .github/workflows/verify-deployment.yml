@@ -1,4 +1,4 @@
-name: Deploy Sentinel content
+name: Verify deployed Sentinel content
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
@@ -28,12 +28,9 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Deploy lab infrastructure
+      - name: Verify deployed rules match source control
         run: >-
-          az deployment group create
-          --name "sentinel-lab-${{ inputs.environment }}-${{ github.run_id }}"
+          python scripts/verify_deployment.py
+          --subscription-id "${{ vars.AZURE_SUBSCRIPTION_ID }}"
           --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}"
-          --template-file infra/main.bicep
-          --parameters environment="${{ inputs.environment }}" workspaceName="${{ vars.SENTINEL_WORKSPACE_NAME }}"
-      - name: Validate and deploy analytics rules
-        run: ./scripts/deploy.sh "${{ inputs.environment }}" "${{ vars.AZURE_RESOURCE_GROUP }}" "${{ vars.SENTINEL_WORKSPACE_NAME }}"
+          --workspace-name "${{ vars.SENTINEL_WORKSPACE_NAME }}"

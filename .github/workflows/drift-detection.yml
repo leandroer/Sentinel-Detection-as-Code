@@ -1,0 +1,52 @@
+name: Detect Sentinel configuration drift
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      SENTINEL_WORKSPACE_NAME: ${{ vars.SENTINEL_WORKSPACE_NAME }}
+    steps:
+      - name: Check drift-detection configuration
+        id: configuration
+        run: |
+          if [ -z "$AZURE_CLIENT_ID" ] || [ -z "$AZURE_TENANT_ID" ] || [ -z "$AZURE_SUBSCRIPTION_ID" ] || [ -z "$AZURE_RESOURCE_GROUP" ] || [ -z "$SENTINEL_WORKSPACE_NAME" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Drift detection skipped: configure the dev environment variables first."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.configuration.outputs.configured == 'true'
+      - uses: actions/setup-python@v7
+        if: steps.configuration.outputs.configured == 'true'
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+        if: steps.configuration.outputs.configured == 'true'
+      - uses: azure/login@v3
+        if: steps.configuration.outputs.configured == 'true'
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+      - name: Report drift from source-controlled rules
+        if: steps.configuration.outputs.configured == 'true'
+        run: >-
+          python scripts/verify_deployment.py
+          --subscription-id "$AZURE_SUBSCRIPTION_ID"
+          --resource-group "$AZURE_RESOURCE_GROUP"
+          --workspace-name "$SENTINEL_WORKSPACE_NAME"

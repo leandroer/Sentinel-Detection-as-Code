@@ -16,10 +16,10 @@ az account set --subscription "<subscription-id-or-name>"
 The person completing the bootstrap needs:
 
 - Permission to create an Entra application and service principal, or help from an Entra administrator.
-- `Owner` or `User Access Administrator` at the target resource-group scope to create the role assignment.
+- `Owner` or `Role Based Access Control Administrator` at subscription scope to create the custom role, plus `Owner` or `User Access Administrator` at the target resource-group scope to assign it.
 - Permission to create the target resource group. `Contributor` is sufficient after the role assignment exists.
 
-The GitHub deployment identity receives `Contributor` only on the dedicated resource group. Do not grant it subscription-wide access.
+The GitHub deployment identity receives a scoped custom role only on the dedicated resource group. Do not grant it subscription-wide access.
 
 ## 1. Create the resource group and register providers
 
@@ -51,17 +51,25 @@ export AZURE_CLIENT_ID="$(az ad app create --display-name "$APP_NAME" --query ap
 export SERVICE_PRINCIPAL_OBJECT_ID="$(az ad sp create --id "$AZURE_CLIENT_ID" --query id --output tsv)"
 ```
 
-Assign the application the minimum broad role needed to deploy this lab. For a production implementation, replace `Contributor` with a reviewed custom role limited to the resource types in `infra/` and the packaged Sentinel rule template.
+Create the reviewed custom role included in this repository. The role permits only the resource types deployed by `infra/` and the packaged Sentinel rule template; it does not grant subscription-wide access.
 
 ```bash
+export SUBSCRIPTION_ID="<subscription-id>"
+cp infra/roles/sentinel-detection-deployer.template.json /tmp/sentinel-detection-deployer.json
+sed -i.bak "s/<SUBSCRIPTION_ID>/$SUBSCRIPTION_ID/g" /tmp/sentinel-detection-deployer.json
+
+az role definition create --role-definition /tmp/sentinel-detection-deployer.json
+
 export RESOURCE_GROUP_SCOPE="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP"
 
 az role assignment create \
   --assignee-object-id "$SERVICE_PRINCIPAL_OBJECT_ID" \
   --assignee-principal-type ServicePrincipal \
-  --role Contributor \
+  --role "Sentinel Detection as Code Deployer" \
   --scope "$RESOURCE_GROUP_SCOPE"
 ```
+
+The custom role definition is subscription-scoped so Azure can assign it to the resource group. Review it with the subscription owner before creating it, and validate the first `dev` deployment before removing any needed action.
 
 ## 3. Trust the GitHub environment with OIDC
 
@@ -115,7 +123,7 @@ Keep `dev` unprotected while validating the lab. Create `test` and `prod` separa
 
 1. Open **Actions → Deploy Sentinel content → Run workflow**.
 2. Select `dev`.
-3. Review the workflow output: it validates the repository, packages the rules, authenticates with OIDC, and deploys the ARM template.
+3. Review the workflow output: it validates the repository, deploys Bicep infrastructure, packages the rules, authenticates with OIDC, and deploys the analytics-rule ARM template.
 4. In Azure, confirm the Log Analytics workspace, Sentinel solution, two Logic Apps, and five analytics rules exist.
 
 You can also deploy from a trusted local Azure CLI session:
@@ -139,6 +147,12 @@ az deployment group create \
 | `Missing environment variable` | GitHub variable was created at repository rather than environment scope, or typo | Add the value under the selected environment's variables. |
 | Resource provider is not registered | Subscription provider registration has not completed | Register the provider and wait for `Registered`. |
 | Sentinel rule deployment fails | Workspace or Sentinel solution is not ready | Deploy `infra/main.bicep` first, wait for completion, then rerun the content deployment. |
+
+## Verify deployment and detect drift
+
+Run **Actions → Verify deployed Sentinel content** after any deployment. The workflow compares every deployed rule's ID, name, query, severity, enabled state, and kind with source control.
+
+The **Detect Sentinel configuration drift** workflow runs every Monday for the `dev` environment once its variables are configured. It is read-only and fails when a portal-side rule change differs from the canonical YAML. Use the failure as a signal to either reconcile the change into Git or redeploy the approved release.
 
 ## Teardown
 

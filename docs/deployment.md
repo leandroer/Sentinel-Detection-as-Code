@@ -38,6 +38,8 @@ Create `dev`, `test`, and `prod` environments. Require reviewers for production 
 
 Use Azure workload identity federation rather than a client secret.
 
+The deployment workflow first deploys `infra/main.bicep`, then deploys the packaged analytics rules. Run **Verify deployed Sentinel content** after the first deployment and use the scheduled drift workflow to identify portal-side changes.
+
 ## Rollback
 
 Redeploy the package attached to the previous GitHub release. Rule IDs remain stable, so ARM updates the existing resources. If an urgent rule disable is required, change `enabled` in source, validate, and promote that commit rather than creating permanent portal drift.
