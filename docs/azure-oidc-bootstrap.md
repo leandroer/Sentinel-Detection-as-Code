@@ -6,7 +6,7 @@ Use a dedicated, non-production resource group for the first deployment. The exa
 
 ## Prerequisites and permissions
 
-Install the current [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) and sign in:
+Install the current [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) and `jq`, then sign in:
 
 ```bash
 az login
@@ -24,9 +24,12 @@ The GitHub deployment identity receives a scoped custom role only on the dedicat
 ## 1. Create the resource group and register providers
 
 ```bash
-export SUBSCRIPTION_ID="<subscription-id>"
-export LOCATION="eastus"
-export RESOURCE_GROUP="rg-sentinel-detection-dev"
+export SUBSCRIPTION_ID="<your-azure-subscription-id>"
+export LOCATION="<your-azure-region>"
+export RESOURCE_GROUP="<your-resource-group-name>"
+export WORKSPACE_NAME="<your-log-analytics-workspace-name>"
+
+az account set --subscription "$SUBSCRIPTION_ID"
 
 az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
 
@@ -54,7 +57,6 @@ export SERVICE_PRINCIPAL_OBJECT_ID="$(az ad sp create --id "$AZURE_CLIENT_ID" --
 Create the reviewed custom role included in this repository. The role permits only the resource types deployed by `infra/` and the packaged Sentinel rule template; it does not grant subscription-wide access.
 
 ```bash
-export SUBSCRIPTION_ID="<subscription-id>"
 cp infra/roles/sentinel-detection-deployer.template.json /tmp/sentinel-detection-deployer.json
 sed -i.bak "s/<SUBSCRIPTION_ID>/$SUBSCRIPTION_ID/g" /tmp/sentinel-detection-deployer.json
 
@@ -73,29 +75,33 @@ The custom role definition is subscription-scoped so Azure can assign it to the 
 
 ## 3. Trust the GitHub environment with OIDC
 
-The deployment workflow targets GitHub environments named `dev`, `test`, and `prod`. Create one federated credential per environment that you intend to use. The subject must exactly match the GitHub repository and environment name.
+The deployment workflow targets GitHub environments named `dev`, `test`, and `prod`. Create one federated credential per environment that you intend to use. The subject must exactly match your GitHub owner, repository, and environment name, including casing.
 
-Create `credential-dev.json` outside the repository or remove it after use:
-
-```json
-{
-  "name": "github-sentinel-detection-dev",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:leandroer/Sentinel-Detection-as-Code:environment:dev",
-  "description": "Allows the dev GitHub environment to deploy Sentinel Detection as Code.",
-  "audiences": ["api://AzureADTokenExchange"]
-}
-```
-
-Create the credential:
+Set your own GitHub values and generate the credential outside the repository:
 
 ```bash
+export GITHUB_OWNER="<your-github-user-or-organization>"
+export GITHUB_REPOSITORY="<your-repository-name>"
+export GITHUB_ENVIRONMENT="dev"
+
+jq --null-input \
+  --arg name "github-sentinel-detection-$GITHUB_ENVIRONMENT" \
+  --arg subject "repo:$GITHUB_OWNER/$GITHUB_REPOSITORY:environment:$GITHUB_ENVIRONMENT" \
+  --arg description "Allows the $GITHUB_ENVIRONMENT GitHub environment to deploy Sentinel Detection as Code." \
+  '{
+    name: $name,
+    issuer: "https://token.actions.githubusercontent.com",
+    subject: $subject,
+    description: $description,
+    audiences: ["api://AzureADTokenExchange"]
+  }' > /tmp/credential.json
+
 az ad app federated-credential create \
   --id "$AZURE_CLIENT_ID" \
-  --parameters credential-dev.json
+  --parameters /tmp/credential.json
 ```
 
-For `test` or `prod`, copy the file and change both `name` and the final environment segment of `subject`. Never use a broad branch-based credential when environment protection rules provide the intended control boundary.
+Repeat the command with `GITHUB_ENVIRONMENT` set to `test` or `prod` as needed. Do not commit the generated credential file. Never use a broad branch-based credential when environment protection rules provide the intended control boundary.
 
 Verify the trust configuration:
 
@@ -115,7 +121,7 @@ Under **Environment variables**, add these values. They are identifiers, not sec
 | `AZURE_TENANT_ID` | `$TENANT_ID` from step 2 |
 | `AZURE_SUBSCRIPTION_ID` | `$SUBSCRIPTION_ID` from step 1 |
 | `AZURE_RESOURCE_GROUP` | `$RESOURCE_GROUP` from step 1 |
-| `SENTINEL_WORKSPACE_NAME` | `law-sentinel-detection-dev`, or your chosen name |
+| `SENTINEL_WORKSPACE_NAME` | `$WORKSPACE_NAME` from step 1 |
 
 Keep `dev` unprotected while validating the lab. Create `test` and `prod` separately, use distinct resource groups and identities where practical, and require reviewers for `prod`.
 
@@ -133,9 +139,9 @@ az deployment group create \
   --name sentinel-lab-dev \
   --resource-group "$RESOURCE_GROUP" \
   --template-file infra/main.bicep \
-  --parameters infra/parameters/dev.bicepparam
+  --parameters infra/parameters/dev.bicepparam workspaceName="$WORKSPACE_NAME"
 
-./scripts/deploy.sh dev "$RESOURCE_GROUP" "law-sentinel-detection-dev"
+./scripts/deploy.sh dev "$RESOURCE_GROUP" "$WORKSPACE_NAME"
 ```
 
 ## Troubleshooting
@@ -165,7 +171,9 @@ az group delete --name "$RESOURCE_GROUP" --yes --no-wait
 Then remove the federated credential, service principal, and application if they are dedicated to this lab. Confirm the application is not shared before deleting it:
 
 ```bash
-az ad app federated-credential delete --id "$AZURE_CLIENT_ID" --federated-credential-id github-sentinel-detection-dev
+az ad app federated-credential delete \
+  --id "$AZURE_CLIENT_ID" \
+  --federated-credential-id "github-sentinel-detection-$GITHUB_ENVIRONMENT"
 az ad sp delete --id "$AZURE_CLIENT_ID"
 az ad app delete --id "$AZURE_CLIENT_ID"
 ```
