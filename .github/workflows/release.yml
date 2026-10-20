@@ -18,11 +18,15 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python scripts/validate.py
       - run: python -m unittest discover -s tests -v
-      - run: |
+      - name: Build safely named release archive
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          archive_name=$(python scripts/release_name.py "$RELEASE_TAG")
           for environment in dev test prod; do
             python scripts/package_rules.py --environment "$environment" --output "dist/$environment"
           done
-          tar -czf sentinel-detection-as-code-${{ github.ref_name }}.tar.gz dist
+          tar -czf "$archive_name" dist
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           files: sentinel-detection-as-code-${{ github.ref_name }}.tar.gz
